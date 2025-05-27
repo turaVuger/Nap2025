@@ -26,25 +26,25 @@
     .container {
       position: relative;
       z-index: 1;
-      padding: 20px;
-      height: 100vh;
+      padding: 10px 10px 60px 10px;
+      height: 100vh; padding-top: 8px;
       display: flex;
       flex-direction: column;
     }
     .header {
       text-align: center;
-      margin-bottom: 10px;
+      margin-bottom: 4px;
     }
     .input-group {
       display: flex;
       gap: 10px;
-      margin-bottom: 10px;
+      margin-bottom: 4px;
     }
     input, button {
       border: 1px solid #c7c7cc;
       border-radius: 10px;
-      padding: 12px;
-      font-size: 16px;
+      padding: 6px;
+      font-size: 12px;
       background: rgba(255, 255, 255, 0.9);
     }
     input[type="text"] {
@@ -53,7 +53,7 @@
     .date-time-inputs {
       display: flex;
       gap: 10px;
-      margin-bottom: 10px;
+      margin-bottom: 4px;
     }
     .task-list-wrapper {
       flex: 1;
@@ -64,10 +64,10 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 15px;
+      padding: 8px;
       background: rgba(255, 255, 255, 0.9);
       border-radius: 12px;
-      margin-bottom: 10px;
+      margin-bottom: 4px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .task-text {
@@ -83,9 +83,9 @@
     .time-badge {
       background: #007aff;
       color: white;
-      padding: 4px 8px;
+      padding: 2px 6px;
       border-radius: 10px;
-      font-size: 14px;
+      font-size: 12px;
       margin-top: 5px;
       display: inline-block;
     }
@@ -109,7 +109,7 @@
   <canvas id="canvas"></canvas>
 
   <div class="container">
-    <div class="header"><h1>NAP-NAP 🎵</h1></div>
+    
 
     <div class="input-group">
       <input type="text" id="taskInput" placeholder="Новое напоминание" />
