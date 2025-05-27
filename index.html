@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Напоминалка</title>
+  <title>NAP-NAP</title>
   <style>
     * {
       box-sizing: border-box;
@@ -22,144 +22,104 @@
       z-index: 0;
       width: 100%;
       height: 100%;
-      pointer-events: none;
     }
     .container {
       position: relative;
       z-index: 1;
       padding: 10px;
+      height: 100vh;
       display: flex;
       flex-direction: column;
     }
     .input-group {
-  position: sticky;
-  top: 0;
-  background: rgba(255, 255, 255, 0.8);
-  z-index: 3;
-
       display: flex;
-      gap: 20px;
-      margin-bottom: 20px;
+      gap: 8px;
+      margin-bottom: 8px;
     }
     input, button {
       border: 1px solid #c7c7cc;
       border-radius: 10px;
-      padding: 24px;
-      font-size: 32px;
-      background: rgba(255, 255, 255, 0.80);
+      padding: 10px;
+      font-size: 16px;
+      background: rgba(255, 255, 255, 0.8);
     }
     input[type="text"] {
       flex: 1;
     }
     .date-time-inputs {
-  position: sticky;
-  top: 60px;
-  background: rgba(255, 255, 255, 0.8);
-  z-index: 3;
-
       display: flex;
-      gap: 20px;
-      margin-bottom: 20px;
+      gap: 8px;
+      margin-bottom: 8px;
     }
     .task-list-wrapper {
       flex: 1;
       overflow-y: auto;
       padding-right: 5px;
-      max-height: calc(100vh - 280px);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
     .task-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 15px 10px;
-      background: rgba(255, 255, 255, 0.80);
+      background: rgba(255, 255, 255, 0.8);
       border-radius: 12px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 10px 12px;
+      font-size: 16px;
     }
     .task-text {
       flex: 1;
-      margin-right: 20px;
-      font-size: 28px;
+      white-space: pre-wrap;
     }
-    .task-text[contenteditable="true"] {
-  outline: none;
-  background: transparent;
-  border-radius: 4px;
-  padding: 0;
-}
-    .time-badge {
-      background: #007aff;
-      color: white;
-      padding: 8px 16px;
-      border-radius: 12px;
-      font-size: 24px;
-      margin-top: 10px;
-      display: inline-block;
+    .task-time {
+      margin-right: 12px;
+      white-space: nowrap;
+    }
+    .delete-btn {
+      border: none;
+      background: transparent;
+      font-size: 18px;
+      cursor: pointer;
     }
     .delete-all {
-  background: rgba(255, 59, 48, 0.8);
-
       position: fixed;
       bottom: 20px;
       right: 20px;
-      width: 80px;
-      height: 80px;
+      width: 50px;
+      height: 50px;
       border-radius: 50%;
       background: #ff3b30;
       color: white;
       border: none;
-      font-size: 40px;
+      font-size: 24px;
       z-index: 2;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-  
-.task-controls {
-  display: flex;
-  gap: 6px;
-  margin-top: 5px;
-  align-items: center;
-}
-.task-controls input[type="date"],
-.task-controls input[type="time"] {
-  padding: 4px 6px;
-  font-size: 14px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  background: rgba(255, 255, 255, 0.8);
-  color: #1c1c1e;
-  height: 32px;
-}
-</style>
+  </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
-
   <div class="container">
     <div class="input-group">
       <input type="text" id="taskInput" placeholder="Новое напоминание" />
-      <button onclick="addTask()" style="margin-left: auto;">+</button>
+      <button onclick="addTask()">+</button>
     </div>
-
     <div class="date-time-inputs">
       <input type="date" id="taskDate" />
       <input type="time" id="taskTime" />
     </div>
-
     <div class="task-list-wrapper" id="taskList"></div>
-
     <button class="delete-all" onclick="confirmDeleteAll()">×</button>
   </div>
 
   <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-
     function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     }
-
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
@@ -179,7 +139,6 @@
         this.parallax = Math.random() < 0.2 ? 0.7 : 1.0;
         this.type = Math.random() < 0.1 ? 'exotic' : 'normal';
       }
-
       update() {
         this.x += this.vx * this.parallax;
         this.y += this.vy * this.parallax;
@@ -219,7 +178,7 @@
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 120) {
             ctx.beginPath();
-            ctx.strokeStyle = p1.color.replace(')', `, ${0.4 - dist / 300})`);
+            ctx.strokeStyle = p1.color.replace(')', `, ${0.4 - dist / 300})`).replace('hsl', 'hsla');
             ctx.lineWidth = 0.7;
             ctx.moveTo(p1.x, p1.y);
             ctx.lineTo(p2.x, p2.y);
@@ -231,7 +190,7 @@
         ctx.arc(p1.x, p1.y, Math.sqrt(p1.mass) * (p1.parallax < 1 ? 0.8 : 1.2), 0, Math.PI * 2);
         ctx.fill();
         if (p1.type === 'exotic') {
-          ctx.strokeStyle = p1.color.replace(')', ', 0.1)');
+          ctx.strokeStyle = p1.color.replace(')', ', 0.1)').replace('hsl', 'hsla');
           ctx.lineWidth = 3;
           ctx.beginPath();
           ctx.arc(p1.x, p1.y, Math.sqrt(p1.mass) * 2.5, 0, Math.PI * 2);
@@ -249,6 +208,7 @@
 
     animate();
 
+    // Task logic
     let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
 
     function saveTasks() {
@@ -257,10 +217,10 @@
     }
 
     function addTask() {
-      const text = document.getElementById('taskInput').value;
+      const text = document.getElementById('taskInput').value.trim();
       const date = document.getElementById('taskDate').value;
       const time = document.getElementById('taskTime').value;
-      if (text.trim()) {
+      if (text) {
         tasks.push({
           text,
           date,
@@ -281,29 +241,23 @@
         const div = document.createElement('div');
         div.className = 'task-item';
 
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'task-time';
+        timeSpan.textContent = task.timestamp ? new Date(task.timestamp).toLocaleString() + '  ' : '';
+
         const textDiv = document.createElement('div');
         textDiv.className = 'task-text';
         textDiv.textContent = task.text;
-        textDiv.setAttribute('contenteditable', 'true');
-        textDiv.addEventListener('blur', () => {
-          tasks[index].text = textDiv.textContent.trim();
-          saveTasks();
-        });
-
-        const timeBadge = task.timestamp
-          ? `<div class="time-badge">${new Date(task.timestamp).toLocaleString()}</div>`
-          : '';
-
-        const timeWrapper = document.createElement('div');
-        timeWrapper.innerHTML = timeBadge;
-        div.appendChild(timeWrapper);
 
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = '✕';
+        deleteBtn.className = 'delete-btn';
         deleteBtn.onclick = () => deleteTask(index);
 
+        div.appendChild(timeSpan);
         div.appendChild(textDiv);
         div.appendChild(deleteBtn);
+
         taskList.appendChild(div);
       });
     }
@@ -328,33 +282,6 @@
     }
 
     renderTasks();
-  
-
-function adjustTaskHeights() {
-  document.querySelectorAll('.task-item').forEach(item => {
-    const textEl = item.querySelector('.task-text');
-    const badgeEl = item.querySelector('.time-badge');
-    const isSingleLine = textEl.scrollHeight <= 40;
-    const hasDate = badgeEl !== null;
-
-    if (isSingleLine && !hasDate) {
-      item.style.paddingTop = '5px';
-      item.style.paddingBottom = '5px';
-    } else if (isSingleLine) {
-      item.style.paddingTop = '8px';
-      item.style.paddingBottom = '8px';
-    } else {
-      item.style.paddingTop = '15px';
-      item.style.paddingBottom = '15px';
-    }
-  });
-}
-window.addEventListener('resize', adjustTaskHeights);
-window.addEventListener('load', adjustTaskHeights);
-new MutationObserver(adjustTaskHeights).observe(document.getElementById('taskList'), { childList: true, subtree: true });
-
-new MutationObserver(adjustTaskHeights).observe(document.getElementById('taskList'), { childList: true, subtree: true });
-
-</script>
+  </script>
 </body>
 </html>
