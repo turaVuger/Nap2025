@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -26,7 +27,7 @@
     .container {
       position: relative;
       z-index: 1;
-      padding: 10px;
+      padding: 15px;
       display: flex;
       flex-direction: column;
     }
@@ -38,8 +39,8 @@
     input, button {
       border: 1px solid #c7c7cc;
       border-radius: 10px;
-      padding: 24px;
-      font-size: 32px;
+      padding: 36px;
+      font-size: 48px;
       background: rgba(255, 255, 255, 0.9);
     }
     input[type="text"] {
@@ -60,7 +61,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 30px;
+      padding: 45px;
       background: rgba(255, 255, 255, 0.9);
       border-radius: 12px;
       margin-bottom: 20px;
@@ -69,20 +70,20 @@
     .task-text {
       flex: 1;
       margin-right: 20px;
-      font-size: 28px;
+      font-size: 42px;
     }
     .task-text[contenteditable="true"] {
       outline: 1px dashed #007aff;
       background: #f0f8ff;
       border-radius: 4px;
-      padding: 6px;
+      padding: 9px;
     }
     .time-badge {
       background: #007aff;
       color: white;
-      padding: 8px 16px;
+      padding: 12px 16px;
       border-radius: 12px;
-      font-size: 24px;
+      font-size: 36px;
       margin-top: 10px;
       display: inline-block;
     }
@@ -96,7 +97,7 @@
       background: #ff3b30;
       color: white;
       border: none;
-      font-size: 40px;
+      font-size: 60px;
       z-index: 2;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
@@ -219,7 +220,6 @@
 
     animate();
 
-    // Task logic
     let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
 
     function saveTasks() {
