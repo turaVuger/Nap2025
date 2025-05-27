@@ -74,6 +74,12 @@
       flex: 1;
       margin-right: 10px;
     }
+    .task-text[contenteditable="true"] {
+      outline: 1px dashed #007aff;
+      background: #f0f8ff;
+      border-radius: 4px;
+      padding: 2px;
+    }
     .time-badge {
       background: #007aff;
       color: white;
@@ -81,6 +87,7 @@
       border-radius: 10px;
       font-size: 14px;
       margin-top: 5px;
+      display: inline-block;
     }
     .delete-all {
       position: fixed;
@@ -234,7 +241,6 @@
           text,
           date,
           time,
-          completed: false,
           timestamp: date && time ? new Date(`${date}T${time}`).getTime() : null
         });
         document.getElementById('taskInput').value = '';
@@ -246,15 +252,36 @@
 
     function renderTasks() {
       const taskList = document.getElementById('taskList');
-      taskList.innerHTML = tasks.map((task, index) => `
-        <div class="task-item">
-          <div class="task-text">
-            ${task.text}
-            ${task.timestamp ? `<div class="time-badge">${new Date(task.timestamp).toLocaleString()}</div>` : ''}
-          </div>
-          <button onclick="deleteTask(${index})">✕</button>
-        </div>
-      `).join('');
+      taskList.innerHTML = '';
+      tasks.forEach((task, index) => {
+        const div = document.createElement('div');
+        div.className = 'task-item';
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'task-text';
+        textDiv.textContent = task.text;
+        textDiv.setAttribute('contenteditable', 'true');
+        textDiv.addEventListener('blur', () => {
+          tasks[index].text = textDiv.textContent.trim();
+          saveTasks();
+        });
+
+        const timeBadge = task.timestamp
+          ? `<div class="time-badge">${new Date(task.timestamp).toLocaleString()}</div>`
+          : '';
+
+        const timeWrapper = document.createElement('div');
+        timeWrapper.innerHTML = timeBadge;
+        textDiv.appendChild(timeWrapper);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '✕';
+        deleteBtn.onclick = () => deleteTask(index);
+
+        div.appendChild(textDiv);
+        div.appendChild(deleteBtn);
+        taskList.appendChild(div);
+      });
     }
 
     function deleteTask(index) {
@@ -262,16 +289,17 @@
       saveTasks();
     }
 
-    let deleteCounter = 0;
+    let confirmTimeout;
     function confirmDeleteAll() {
-      deleteCounter++;
-      if (deleteCounter === 1) {
-        alert('Нажмите ещё раз для подтверждения удаления');
-        setTimeout(() => deleteCounter = 0, 2000);
-      } else if (deleteCounter === 2) {
+      if (confirmTimeout) {
+        clearTimeout(confirmTimeout);
+        confirmTimeout = null;
         tasks = [];
         saveTasks();
-        deleteCounter = 0;
+        alert('Все задачи удалены');
+      } else {
+        alert('Нажмите ещё раз в течение 3 секунд для подтверждения удаления всех задач');
+        confirmTimeout = setTimeout(() => confirmTimeout = null, 3000);
       }
     }
 
