@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NAP-NAP напоминалка</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell;
+    }
+    body {
+      margin: 0;
+      overflow: hidden;
+      position: relative;
+      color: #1c1c1e;
+    }
+    #canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    input, button {
+      border: 1px solid #c7c7cc;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 16px;
+      background: rgba(255, 255, 255, 0.9);
+    }
+    input[type="text"] {
+      flex: 1;
+    }
+    .date-time-inputs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .task-list-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+    .task-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .task-text {
+      flex: 1;
+      margin-right: 10px;
+    }
+    .task-text[contenteditable="true"] {
+      outline: 1px dashed #007aff;
+      background: #f0f8ff;
+      border-radius: 4px;
+      padding: 2px;
+    }
+    .time-badge {
+      background: #007aff;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-top: 5px;
+      display: inline-block;
+    }
+    .delete-all {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #ff3b30;
+      color: white;
+      border: none;
+      font-size: 24px;
+      z-index: 2;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <div class="container">
+    <div class="header"><h1>NAP-NAP 🎵</h1></div>
+
+    <div class="input-group">
+      <input type="text" id="taskInput" placeholder="Новое напоминание" />
+      <button onclick="addTask()">+</button>
+    </div>
+
+    <div class="date-time-inputs">
+      <input type="date" id="taskDate" />
+      <input type="time" id="taskTime" />
+    </div>
+
+    <div class="task-list-wrapper" id="taskList"></div>
+
+    <button class="delete-all" onclick="confirmDeleteAll()">×</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const particles = [];
+    const numParticles = 70;
+    const SPEED_FACTOR = 0.5;
+    const G = 0.15;
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.vx = (Math.random() - 0.5) * SPEED_FACTOR;
+        this.vy = (Math.random() - 0.5) * SPEED_FACTOR;
+        this.mass = Math.random() * 8 + 4;
+        this.color = `hsl(${Math.random() * 360}, 70%, 50%)`;
+        this.parallax = Math.random() < 0.2 ? 0.7 : 1.0;
+        this.type = Math.random() < 0.1 ? 'exotic' : 'normal';
+      }
+
+      update() {
+        this.x += this.vx * this.parallax;
+        this.y += this.vy * this.parallax;
+        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+      }
+    }
+
+    for (let i = 0; i < numParticles; i++) {
+      particles.push(new Particle());
+    }
+
+    function applyPhysics() {
+      particles.forEach(p1 => {
+        particles.forEach(p2 => {
+          if (p1 === p2) return;
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          let force = G * (p1.mass * p2.mass) / (dist * dist + 100);
+          if (p1.type === 'exotic' || p2.type === 'exotic') {
+            force *= Math.sin(Date.now() * 0.002) * 1.5;
+          }
+          p1.vx += (dx / dist) * force * SPEED_FACTOR;
+          p1.vy += (dy / dist) * force * SPEED_FACTOR;
+        });
+      });
+    }
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p1 => {
+        particles.forEach(p2 => {
+          if (p1 === p2) return;
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.strokeStyle = p1.color.replace(')', `, ${0.4 - dist / 300})`);
+            ctx.lineWidth = 0.7;
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        });
+        ctx.fillStyle = p1.color;
+        ctx.beginPath();
+        ctx.arc(p1.x, p1.y, Math.sqrt(p1.mass) * (p1.parallax < 1 ? 0.8 : 1.2), 0, Math.PI * 2);
+        ctx.fill();
+        if (p1.type === 'exotic') {
+          ctx.strokeStyle = p1.color.replace(')', ', 0.1)');
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(p1.x, p1.y, Math.sqrt(p1.mass) * 2.5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      });
+    }
+
+    function animate() {
+      applyPhysics();
+      particles.forEach(p => p.update());
+      drawBackground();
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    // Task logic
+    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+
+    function saveTasks() {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+      renderTasks();
+    }
+
+    function addTask() {
+      const text = document.getElementById('taskInput').value;
+      const date = document.getElementById('taskDate').value;
+      const time = document.getElementById('taskTime').value;
+      if (text.trim()) {
+        tasks.push({
+          text,
+          date,
+          time,
+          timestamp: date && time ? new Date(`${date}T${time}`).getTime() : null
+        });
+        document.getElementById('taskInput').value = '';
+        document.getElementById('taskDate').value = '';
+        document.getElementById('taskTime').value = '';
+        saveTasks();
+      }
+    }
+
+    function renderTasks() {
+      const taskList = document.getElementById('taskList');
+      taskList.innerHTML = '';
+      tasks.forEach((task, index) => {
+        const div = document.createElement('div');
+        div.className = 'task-item';
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'task-text';
+        textDiv.textContent = task.text;
+        textDiv.setAttribute('contenteditable', 'true');
+        textDiv.addEventListener('blur', () => {
+          tasks[index].text = textDiv.textContent.trim();
+          saveTasks();
+        });
+
+        const timeBadge = task.timestamp
+          ? `<div class="time-badge">${new Date(task.timestamp).toLocaleString()}</div>`
+          : '';
+
+        const timeWrapper = document.createElement('div');
+        timeWrapper.innerHTML = timeBadge;
+        textDiv.appendChild(timeWrapper);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '✕';
+        deleteBtn.onclick = () => deleteTask(index);
+
+        div.appendChild(textDiv);
+        div.appendChild(deleteBtn);
+        taskList.appendChild(div);
+      });
+    }
+
+    function deleteTask(index) {
+      tasks.splice(index, 1);
+      saveTasks();
+    }
+
+    let confirmTimeout;
+    function confirmDeleteAll() {
+      if (confirmTimeout) {
+        clearTimeout(confirmTimeout);
+        confirmTimeout = null;
+        tasks = [];
+        saveTasks();
+        alert('Все задачи удалены');
+      } else {
+        alert('Нажмите ещё раз в течение 3 секунд для подтверждения удаления всех задач');
+        confirmTimeout = setTimeout(() => confirmTimeout = null, 3000);
+      }
+    }
+
+    renderTasks();
+  </script>
+</body>
+</html>
