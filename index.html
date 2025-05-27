@@ -71,7 +71,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 30px;
+      padding: 15px 10px;
       background: rgba(255, 255, 255, 0.80);
       border-radius: 12px;
       margin-bottom: 20px;
@@ -83,11 +83,11 @@
       font-size: 28px;
     }
     .task-text[contenteditable="true"] {
-      outline: 1px dashed #007aff;
-      background: #f0f8ff;
-      border-radius: 4px;
-      padding: 6px;
-    }
+  outline: none;
+  background: transparent;
+  border-radius: 4px;
+  padding: 0;
+}
     .time-badge {
       background: #007aff;
       color: white;
@@ -113,7 +113,24 @@
       z-index: 2;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-  </style>
+  
+.task-controls {
+  display: flex;
+  gap: 6px;
+  margin-top: 5px;
+  align-items: center;
+}
+.task-controls input[type="date"],
+.task-controls input[type="time"] {
+  padding: 4px 6px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: rgba(255, 255, 255, 0.8);
+  color: #1c1c1e;
+  height: 32px;
+}
+</style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
@@ -121,7 +138,7 @@
   <div class="container">
     <div class="input-group">
       <input type="text" id="taskInput" placeholder="Новое напоминание" />
-      <button onclick="addTask()">+</button>
+      <button onclick="addTask()" style="margin-left: auto;">+</button>
     </div>
 
     <div class="date-time-inputs">
@@ -279,7 +296,7 @@
 
         const timeWrapper = document.createElement('div');
         timeWrapper.innerHTML = timeBadge;
-        textDiv.appendChild(timeWrapper);
+        div.appendChild(timeWrapper);
 
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = '✕';
@@ -311,6 +328,33 @@
     }
 
     renderTasks();
-  </script>
+  
+
+function adjustTaskHeights() {
+  document.querySelectorAll('.task-item').forEach(item => {
+    const textEl = item.querySelector('.task-text');
+    const badgeEl = item.querySelector('.time-badge');
+    const isSingleLine = textEl.scrollHeight <= 40;
+    const hasDate = badgeEl !== null;
+
+    if (isSingleLine && !hasDate) {
+      item.style.paddingTop = '5px';
+      item.style.paddingBottom = '5px';
+    } else if (isSingleLine) {
+      item.style.paddingTop = '8px';
+      item.style.paddingBottom = '8px';
+    } else {
+      item.style.paddingTop = '15px';
+      item.style.paddingBottom = '15px';
+    }
+  });
+}
+window.addEventListener('resize', adjustTaskHeights);
+window.addEventListener('load', adjustTaskHeights);
+new MutationObserver(adjustTaskHeights).observe(document.getElementById('taskList'), { childList: true, subtree: true });
+
+new MutationObserver(adjustTaskHeights).observe(document.getElementById('taskList'), { childList: true, subtree: true });
+
+</script>
 </body>
 </html>
