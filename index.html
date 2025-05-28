@@ -1,12 +1,11 @@
 
 <!DOCTYPE html>
-
 <html lang="ru">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
-<title>NAP-NAP</title>
-<style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NAP-NAP напоминалка</title>
+  <style>
     * {
       box-sizing: border-box;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell;
@@ -14,6 +13,7 @@
     body {
       margin: 0;
       overflow: hidden;
+      position: relative;
       color: #1c1c1e;
     }
     #canvas {
@@ -27,155 +27,127 @@
     .container {
       position: relative;
       z-index: 1;
-      padding: 10px;
+      padding: 20px;
       height: 100vh;
       display: flex;
       flex-direction: column;
     }
     .input-group {
       display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
+      gap: 10px;
+      margin-bottom: 10px;
     }
     input, button {
       border: 1px solid #c7c7cc;
       border-radius: 10px;
-      padding: 10px;
-      font-size: 16px;
-      background: rgba(255, 255, 255, 0.8);
+      padding: 16px;
+      font-size: 18px;
+      background: rgba(255, 255, 255, 0.2);
     }
     input[type="text"] {
       flex: 1;
     }
     .date-time-inputs {
       display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
+      gap: 10px;
+      margin-bottom: 10px;
     }
     .task-list-wrapper {
       flex: 1;
       overflow-y: auto;
       padding-right: 5px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
     }
     .task-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(255, 255, 255, 0.8);
+      padding: 10px 15px;
+      background: rgba(255, 255, 255, 0.2);
       border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 16px;
+      margin-bottom: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .task-text {
       flex: 1;
-      white-space: pre-wrap;
-    }
-    .task-time {
-      margin-right: 12px;
-      white-space: nowrap;
+      margin-left: 10px;
     }
     .delete-btn {
-      border: none;
       background: transparent;
-      font-size: 18px;
+      border: none;
+      font-size: 20px;
       cursor: pointer;
     }
-    .delete-all {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background: #ff3b30;
-      color: white;
-      border: none;
-      font-size: 24px;
-      z-index: 2;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
   
-    input#taskInput {
-        font-size: 20.8px;  /* 16px * 1.3 */
-        padding: 15.6px;    /* 12px * 1.3 */
-    }
-    .input-group button {
-        font-size: 20.8px;
-        padding: 15.6px;
-    }
-    .task-item button {
-        font-size: 20.8px;
-        padding: 15.6px;
-    }
-    .task-item input[type="date"],
-    .task-item input[type="time"] {
-        font-size: 16px;
-        padding: 8px;
-        margin-left: 10px;
-    }
-    </style>
+.task-item {
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(6px);
+}
 
-<style>
-  .task-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 10px;
-    margin-bottom: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    font-size: 16px;
+.task-item::before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  z-index: -1;
+  transform: scale(1);
+  animation: pulseBg 4s ease-in-out infinite;
+}
+
+@keyframes pulseBg {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.2;
   }
-  .task-content {
-    display: flex;
-    align-items: center;
-    flex: 1;
-    gap: 10px;
-    flex-wrap: wrap;
+  50% {
+    transform: scale(1.05);
+    opacity: 0.4;
   }
-  .task-text {
-    flex: 1;
-    min-width: 100px;
-  }
-  .datetime-edit input {
-    padding: 4px;
-    font-size: 14px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    background: rgba(255,255,255,0.9);
-  }
-  .delete-btn {
-    margin-left: 10px;
-    background: #ff3b30;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 18px;
-  }
+}
+
+
+.task-item::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  top: var(--mouse-y, 50%);
+  left: var(--mouse-x, 50%);
+  width: 100px;
+  height: 100px;
+  transform: translate(-50%, -50%) scale(5);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: -1;
+}
+
+.task-item:hover::after {
+  opacity: 1;
+}
+
 </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
-<div class="container">
-<div class="input-group">
-<input id="taskInput" placeholder="Новое напоминание" type="text"/>
-<button onclick="addTask()">+</button>
-</div>
-<div class="date-time-inputs">
-<input id="taskDate" type="date"/>
-<input id="taskTime" type="time"/>
-</div>
-<div class="task-list-wrapper" id="taskList"></div>
-<button class="delete-all" onclick="confirmDeleteAll()">×</button>
-</div>
-<script>
+  <canvas id="canvas"></canvas>
+
+  <div class="container">
+    <div class="input-group">
+      <input type="text" id="taskInput" placeholder="Новое напоминание" />
+      <button onclick="addTask()">+</button>
+    </div>
+    <div class="task-list-wrapper" id="taskList"></div>
+  </div>
+
+  <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+
     function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -199,6 +171,7 @@
         this.parallax = Math.random() < 0.2 ? 0.7 : 1.0;
         this.type = Math.random() < 0.1 ? 'exotic' : 'normal';
       }
+
       update() {
         this.x += this.vx * this.parallax;
         this.y += this.vy * this.parallax;
@@ -238,7 +211,7 @@
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 120) {
             ctx.beginPath();
-            ctx.strokeStyle = p1.color.replace(')', `, ${0.4 - dist / 300})`).replace('hsl', 'hsla');
+            ctx.strokeStyle = p1.color.replace(')', `, ${0.4 - dist / 300})`);
             ctx.lineWidth = 0.7;
             ctx.moveTo(p1.x, p1.y);
             ctx.lineTo(p2.x, p2.y);
@@ -250,7 +223,7 @@
         ctx.arc(p1.x, p1.y, Math.sqrt(p1.mass) * (p1.parallax < 1 ? 0.8 : 1.2), 0, Math.PI * 2);
         ctx.fill();
         if (p1.type === 'exotic') {
-          ctx.strokeStyle = p1.color.replace(')', ', 0.1)').replace('hsl', 'hsla');
+          ctx.strokeStyle = p1.color.replace(')', ', 0.1)');
           ctx.lineWidth = 3;
           ctx.beginPath();
           ctx.arc(p1.x, p1.y, Math.sqrt(p1.mass) * 2.5, 0, Math.PI * 2);
@@ -265,127 +238,125 @@
       drawBackground();
       requestAnimationFrame(animate);
     }
-
     animate();
 
-    // Task logic
-    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+    let tasks = [];
 
-    function saveTasks() {
-      localStorage.setItem('tasks', JSON.stringify(tasks));
-      renderTasks();
-    }
+let currentEditIndex = null;
 
-    function addTask() {
-      const text = document.getElementById('taskInput').value.trim();
-      const date = document.getElementById('taskDate').value;
-      const time = document.getElementById('taskTime').value;
-      if (text) {
-        tasks.push({
-          text,
-          date,
-          time,
-          timestamp: date && time ? new Date(`${date}T${time}`).getTime() : null
-        });
-        document.getElementById('taskInput').value = '';
-        document.getElementById('taskDate').value = '';
-        document.getElementById('taskTime').value = '';
-        saveTasks();
-      }
-    }
+function openDateTimePicker(index) {
+  currentEditIndex = index;
 
-    
+  const modal = document.createElement('div');
+  modal.style.position = 'fixed';
+  modal.style.top = '0';
+  modal.style.left = '0';
+  modal.style.width = '100%';
+  modal.style.height = '100%';
+  modal.style.background = 'rgba(0,0,0,0.4)';
+  modal.style.display = 'flex';
+  modal.style.justifyContent = 'center';
+  modal.style.alignItems = 'center';
+  modal.style.zIndex = '999';
+
+  const pickerBox = document.createElement('div');
+  pickerBox.style.background = '#fff';
+  pickerBox.style.padding = '20px';
+  pickerBox.style.borderRadius = '12px';
+  pickerBox.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+  pickerBox.innerHTML = `
+    <label>Дата и время:<br>
+      <input type="datetime-local" id="datetimeInput" value="${tasks[index].datetime || ''}" style="margin-top:8px; padding:10px; border-radius:10px; border:1px solid #ccc;">
+    </label>
+    <div style="margin-top: 12px; text-align: right;">
+      <button id="saveBtn" style="padding:10px 20px; margin-right:10px;">Сохранить</button>
+      <button id="cancelBtn" style="padding:10px 20px;">Отмена</button>
+    </div>
+  `;
+
+  modal.appendChild(pickerBox);
+  document.body.appendChild(modal);
+
+  document.getElementById('saveBtn').onclick = () => {
+    const value = document.getElementById('datetimeInput').value;
+    tasks[currentEditIndex].datetime = value;
+    document.body.removeChild(modal);
+    renderTasks();
+  };
+
+  document.getElementById('cancelBtn').onclick = () => {
+    document.body.removeChild(modal);
+  };
+}
+
 function renderTasks() {
   const taskList = document.getElementById('taskList');
   taskList.innerHTML = '';
   tasks.forEach((task, index) => {
-    const div = document.createElement('div');
-    div.className = 'task-item';
+    const item = document.createElement('div');
+    item.className = 'task-item';
 
-    const contentWrapper = document.createElement('div');
-    contentWrapper.className = 'task-content';
+    const calendarBtn = document.createElement('button');
+    calendarBtn.innerHTML = '📅';
+    calendarBtn.className = 'delete-btn';
+    calendarBtn.style.marginRight = '8px';
+    calendarBtn.onclick = () => openDateTimePicker(index);
 
-    const textInput = document.createElement('div');
-    textInput.className = 'task-text';
-    textInput.textContent = task.text;
-    textInput.setAttribute('contenteditable', 'true');
-    textInput.addEventListener('blur', () => {
-      tasks[index].text = textInput.textContent.trim();
-      saveTasks();
+    const textDiv = document.createElement('div');
+    textDiv.className = 'task-text';
+    textDiv.textContent = task.text;
+    textDiv.setAttribute('contenteditable', 'true');
+    textDiv.addEventListener('blur', () => {
+      tasks[index].text = textDiv.textContent.trim();
     });
 
-    const datetimeWrapper = document.createElement('div');
-    datetimeWrapper.className = 'datetime-edit';
-
-    const dateInput = document.createElement('input');
-    dateInput.type = 'date';
-    dateInput.value = task.date || '';
-    dateInput.addEventListener('change', () => {
-      tasks[index].date = dateInput.value;
-      updateTimestamp(index);
-      saveTasks();
-    });
-
-    const timeInput = document.createElement('input');
-    timeInput.type = 'time';
-    timeInput.value = task.time || '';
-    timeInput.addEventListener('change', () => {
-      tasks[index].time = timeInput.value;
-      updateTimestamp(index);
-      saveTasks();
-    });
-
-    datetimeWrapper.appendChild(dateInput);
-    datetimeWrapper.appendChild(timeInput);
-    contentWrapper.appendChild(datetimeWrapper);
-    contentWrapper.appendChild(textInput);
+    if (task.datetime) {
+      const dateElem = document.createElement('div');
+      dateElem.style.fontSize = '14px';
+      dateElem.style.color = '#555';
+      dateElem.textContent = new Date(task.datetime).toLocaleString();
+      textDiv.appendChild(dateElem);
+    }
 
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = '✕';
     deleteBtn.className = 'delete-btn';
     deleteBtn.onclick = () => deleteTask(index);
 
-    div.appendChild(contentWrapper);
-    div.appendChild(deleteBtn);
-    taskList.appendChild(div);
+    item.appendChild(calendarBtn);
+    item.appendChild(textDiv);
+    item.appendChild(deleteBtn);
+    taskList.appendChild(item);
   });
 }
 
-function updateTimestamp(index) {
-  const task = tasks[index];
-  if (task.date && task.time) {
-    task.timestamp = new Date(`${task.date}T${task.time}`).getTime();
-  } else {
-    task.timestamp = null;
-  }
-}
 
-
-function deleteTask(index) {
-      tasks.splice(index, 1);
-      saveTasks();
-    }
-
-    let confirmTimeout;
-    function confirmDeleteAll() {
-      if (confirmTimeout) {
-        clearTimeout(confirmTimeout);
-        confirmTimeout = null;
-        tasks = [];
-        saveTasks();
-        alert('Все задачи удалены');
-      } else {
-        alert('Нажмите ещё раз в течение 3 секунд для подтверждения удаления всех задач');
-        confirmTimeout = setTimeout(() => confirmTimeout = null, 3000);
+    function addTask() {
+      const input = document.getElementById('taskInput');
+      const text = input.value.trim();
+      if (text) {
+        tasks.push({ text });
+        input.value = '';
+        renderTasks();
       }
     }
 
-    function updateTaskTimestamp(index) {
-      const { date, time } = tasks[index];
-      tasks[index].timestamp = date && time ? new Date(`${date}T${time}`).getTime() : null;
-      saveTasks();
+    function deleteTask(index) {
+      tasks.splice(index, 1);
+      renderTasks();
     }
-    renderTasks();
-  </script>
+
+      
+document.addEventListener('mousemove', function(e) {
+  document.querySelectorAll('.task-item').forEach(item => {
+    const rect = item.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    item.style.setProperty('--mouse-x', `${x}%`);
+    item.style.setProperty('--mouse-y', `${y}%`);
+  });
+});
+
+</script>
 </body>
 </html>
