@@ -18,7 +18,7 @@
       color: #1c1c1e;
       touch-action: manipulation;
       height: 100vh;
-      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      background: white; /* Изменено на белый фон */
     }
     
     #canvas {
@@ -242,7 +242,7 @@
         this.vx = (Math.random() - 0.5) * SPEED_FACTOR;
         this.vy = (Math.random() - 0.5) * SPEED_FACTOR;
         this.mass = Math.random() * 8 + 4;
-        this.color = `hsl(${Math.random() * 360}, 70%, 60%)`;
+        this.color = `hsl(${Math.random() * 360}, 70%, 60%)`; // Оригинальный цвет частиц
         this.parallax = Math.random() < 0.2 ? 0.7 : 1.0;
         this.type = Math.random() < 0.1 ? 'exotic' : 'normal';
       }
@@ -279,7 +279,7 @@
     function drawBackground() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Рисуем соединения между частицами
+      // Рисуем соединения между частицами (оригинальные)
       particles.forEach(p1 => {
         particles.forEach(p2 => {
           if (p1 === p2) return;
@@ -297,7 +297,7 @@
         });
       });
       
-      // Рисуем сами частицы
+      // Рисуем сами частицы (оригинальные)
       particles.forEach(p => {
         ctx.fillStyle = p.color;
         ctx.beginPath();
