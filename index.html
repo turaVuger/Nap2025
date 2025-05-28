@@ -47,11 +47,6 @@
     input[type="text"] {
       flex: 1;
     }
-    .date-time-inputs {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
     .task-list-wrapper {
       flex: 1;
       overflow-y: auto;
@@ -138,14 +133,6 @@
       opacity: 1;
     }
     
-    .sort-indicator {
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      font-size: 12px;
-      color: #777;
-    }
-    
     .date-display {
       font-size: 14px;
       color: #555;
@@ -169,8 +156,6 @@
       <input type="text" id="taskInput" placeholder="Новое напоминание" />
       <button onclick="addTask()">+</button>
     </div>
-    
-    <div class="sort-indicator">Сортировка: ближайшие сверху</div>
     
     <div class="task-list-wrapper" id="taskList"></div>
   </div>
@@ -285,74 +270,9 @@
       localStorage.setItem('tasks', JSON.stringify(tasks));
     }
 
-    // Сортировка задач по дате
-    function sortTasks() {
-      tasks.sort((a, b) => {
-        // Если обе задачи имеют дату
-        if (a.datetime && b.datetime) {
-          return new Date(a.datetime) - new Date(b.datetime);
-        }
-        // Если только одна задача имеет дату
-        if (a.datetime && !b.datetime) return -1;
-        if (!a.datetime && b.datetime) return 1;
-        // Если ни у одной нет даты, сохраняем текущий порядок
-        return 0;
-      });
-    }
-
-    function openDateTimePicker(index) {
-      currentEditIndex = index;
-
-      const modal = document.createElement('div');
-      modal.style.position = 'fixed';
-      modal.style.top = '0';
-      modal.style.left = '0';
-      modal.style.width = '100%';
-      modal.style.height = '100%';
-      modal.style.background = 'rgba(0,0,0,0.4)';
-      modal.style.display = 'flex';
-      modal.style.justifyContent = 'center';
-      modal.style.alignItems = 'center';
-      modal.style.zIndex = '999';
-
-      const pickerBox = document.createElement('div');
-      pickerBox.style.background = '#fff';
-      pickerBox.style.padding = '20px';
-      pickerBox.style.borderRadius = '12px';
-      pickerBox.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-      pickerBox.innerHTML = `
-        <label>Дата и время:<br>
-          <input type="datetime-local" id="datetimeInput" value="${tasks[index].datetime || ''}" style="margin-top:8px; padding:10px; border-radius:10px; border:1px solid #ccc;">
-        </label>
-        <div style="margin-top: 12px; text-align: right;">
-          <button id="saveBtn" style="padding:10px 20px; margin-right:10px;">Сохранить</button>
-          <button id="cancelBtn" style="padding:10px 20px;">Отмена</button>
-        </div>
-      `;
-
-      modal.appendChild(pickerBox);
-      document.body.appendChild(modal);
-
-      document.getElementById('saveBtn').onclick = () => {
-        const value = document.getElementById('datetimeInput').value;
-        tasks[currentEditIndex].datetime = value;
-        document.body.removeChild(modal);
-        sortTasks();
-        saveTasks();
-        renderTasks();
-      };
-
-      document.getElementById('cancelBtn').onclick = () => {
-        document.body.removeChild(modal);
-      };
-    }
-
     function renderTasks() {
       const taskList = document.getElementById('taskList');
       taskList.innerHTML = '';
-      
-      // Сортируем задачи перед отображением
-      sortTasks();
       
       tasks.forEach((task, index) => {
         const item = document.createElement('div');
@@ -408,12 +328,12 @@
       const input = document.getElementById('taskInput');
       const text = input.value.trim();
       if (text) {
-        tasks.push({ 
+        // Добавляем новую задачу в начало массива
+        tasks.unshift({ 
           text,
           datetime: null
         });
         input.value = '';
-        sortTasks();
         saveTasks();
         renderTasks();
       }
@@ -423,6 +343,52 @@
       tasks.splice(index, 1);
       saveTasks();
       renderTasks();
+    }
+    
+    function openDateTimePicker(index) {
+      currentEditIndex = index;
+
+      const modal = document.createElement('div');
+      modal.style.position = 'fixed';
+      modal.style.top = '0';
+      modal.style.left = '0';
+      modal.style.width = '100%';
+      modal.style.height = '100%';
+      modal.style.background = 'rgba(0,0,0,0.4)';
+      modal.style.display = 'flex';
+      modal.style.justifyContent = 'center';
+      modal.style.alignItems = 'center';
+      modal.style.zIndex = '999';
+
+      const pickerBox = document.createElement('div');
+      pickerBox.style.background = '#fff';
+      pickerBox.style.padding = '20px';
+      pickerBox.style.borderRadius = '12px';
+      pickerBox.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+      pickerBox.innerHTML = `
+        <label>Дата и время:<br>
+          <input type="datetime-local" id="datetimeInput" value="${tasks[index].datetime || ''}" style="margin-top:8px; padding:10px; border-radius:10px; border:1px solid #ccc;">
+        </label>
+        <div style="margin-top: 12px; text-align: right;">
+          <button id="saveBtn" style="padding:10px 20px; margin-right:10px;">Сохранить</button>
+          <button id="cancelBtn" style="padding:10px 20px;">Отмена</button>
+        </div>
+      `;
+
+      modal.appendChild(pickerBox);
+      document.body.appendChild(modal);
+
+      document.getElementById('saveBtn').onclick = () => {
+        const value = document.getElementById('datetimeInput').value;
+        tasks[currentEditIndex].datetime = value;
+        document.body.removeChild(modal);
+        saveTasks();
+        renderTasks();
+      };
+
+      document.getElementById('cancelBtn').onclick = () => {
+        document.body.removeChild(modal);
+      };
     }
     
     // Функции для перетаскивания
@@ -436,7 +402,7 @@
         taskItem.classList.add('dragging');
         taskItem.style.zIndex = '100';
         e.preventDefault();
-      }, 500); // 500ms для long press
+      }, 300); // 300ms для long press
     }
     
     function handleTouchMove(e) {
@@ -560,17 +526,6 @@
     // Загрузка задач при старте
     document.addEventListener('DOMContentLoaded', function() {
       renderTasks();
-      
-      // Проверяем наличие задач в localStorage
-      if (tasks.length === 0) {
-        const sampleTasks = [
-          { text: "Пример задачи 1", datetime: null },
-          { text: "Пример задачи 2", datetime: null }
-        ];
-        tasks = sampleTasks;
-        saveTasks();
-        renderTasks();
-      }
     });
   </script>
 </body>
