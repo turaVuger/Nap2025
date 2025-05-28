@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NAP-NAP напоминалка</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      overflow: hidden;
+      position: relative;
+      color: #1c1c1e;
+      touch-action: manipulation;
+      height: 100vh;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    
+    #canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+    }
+    
+    .container {
+      position: relative;
+      z-index: 1;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Остальные стили остаются без изменений */
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    
+    input, button {
+      border: 1px solid #c7c7cc;
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 18px;
+      background: rgba(255, 255, 255, 0.7);
+      color: #1c1c1e;
+    }
+    
+    input[type="text"] {
+      flex: 1;
+    }
+    
+    .task-list-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 5px;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .task-item {
+      display: flex;
+      align-items: flex-start;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(6px);
+      transition: all 0.3s ease;
+      gap: 12px;
+    }
+    
+    .task-item.dragging {
+      opacity: 0.8;
+      transform: scale(1.02);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    }
+    
+    .drag-handle {
+      cursor: move;
+      padding: 5px;
+      font-size: 20px;
+      flex-shrink: 0;
+      align-self: center;
+      color: #666;
+    }
+    
+    .task-content {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+    
+    .task-text {
+      word-wrap: break-word;
+      line-height: 1.4;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    
+    .task-text[contenteditable="true"] {
+      outline: none;
+      padding: 5px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.3);
+    }
+    
+    .task-text[contenteditable="true"]:focus {
+      background: rgba(255,255,255,0.5);
+    }
+    
+    .date-display {
+      font-size: 14px;
+      color: #555;
+      background: rgba(0,0,0,0.05);
+      padding: 4px 8px;
+      border-radius: 8px;
+      display: inline-block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    
+    .task-actions {
+      display: flex;
+      flex-shrink: 0;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    .calendar-btn, .delete-btn {
+      background: transparent;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.2s;
+      color: #555;
+    }
+    
+    .calendar-btn:hover, .delete-btn:hover {
+      background: rgba(0,0,0,0.1);
+    }
+    
+    .task-item::before {
+      content: '';
+      position: absolute;
+      top: -10%;
+      left: -10%;
+      width: 120%;
+      height: 120%;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 16px;
+      z-index: -1;
+      transform: scale(1);
+      animation: pulseBg 4s ease-in-out infinite;
+    }
+    
+    @keyframes pulseBg {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.3;
+      }
+      50% {
+        transform: scale(1.05);
+        opacity: 0.5;
+      }
+    }
+    
+    .task-item::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+      top: var(--mouse-y, 50%);
+      left: var(--mouse-x, 50%);
+      width: 120px;
+      height: 120px;
+      transform: translate(-50%, -50%) scale(4);
+      border-radius: 50%;
+      background: radial-gradient(rgba(255,255,255,0.3), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.4s;
+      z-index: -1;
+    }
+    
+    .task-item:hover::after {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <div class="container">
+    <div class="input-group">
+      <input type="text" id="taskInput" placeholder="Новое напоминание" />
+      <button onclick="addTask()">+</button>
+    </div>
+    
+    <div class="task-list-wrapper" id="taskList"></div>
+  </div>
+
+  <script>
+    // Инициализация canvas и анимации с оригинальной физикой
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const particles = [];
+    const numParticles = 70;
+    const SPEED_FACTOR = 0.5;
+    const G = 0.15;
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.vx = (Math.random() - 0.5) * SPEED_FACTOR;
+        this.vy = (Math.random() - 0.5) * SPEED_FACTOR;
+        this.mass = Math.random() * 8 + 4;
+        this.color = `hsl(${Math.random() * 360}, 70%, 60%)`;
+        this.parallax = Math.random() < 0.2 ? 0.7 : 1.0;
+        this.type = Math.random() < 0.1 ? 'exotic' : 'normal';
+      }
+
+      update() {
+        this.x += this.vx * this.parallax;
+        this.y += this.vy * this.parallax;
+        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+      }
+    }
+
+    for (let i = 0; i < numParticles; i++) {
+      particles.push(new Particle());
+    }
+
+    function applyPhysics() {
+      particles.forEach(p1 => {
+        particles.forEach(p2 => {
+          if (p1 === p2) return;
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          let force = G * (p1.mass * p2.mass) / (dist * dist + 100);
+          if (p1.type === 'exotic' || p2.type === 'exotic') {
+            force *= Math.sin(Date.now() * 0.002) * 1.5;
+          }
+          p1.vx += (dx / dist) * force * SPEED_FACTOR;
+          p1.vy += (dy / dist) * force * SPEED_FACTOR;
+        });
+      });
+    }
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Рисуем соединения между частицами
+      particles.forEach(p1 => {
+        particles.forEach(p2 => {
+          if (p1 === p2) return;
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.strokeStyle = p1.color.replace(')', `, ${0.4 - dist / 300})`);
+            ctx.lineWidth = 0.7;
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        });
+      });
+      
+      // Рисуем сами частицы
+      particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.sqrt(p.mass) * (p.parallax < 1 ? 0.8 : 1.2), 0, Math.PI * 2);
+        ctx.fill();
+        
+        if (p.type === 'exotic') {
+          ctx.strokeStyle = p.color.replace(')', ', 0.1)');
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, Math.sqrt(p.mass) * 2.5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      });
+    }
+
+    function animate() {
+      applyPhysics();
+      particles.forEach(p => p.update());
+      drawBackground();
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    // Остальная логика приложения остается без изменений
+    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+    let currentEditIndex = null;
+    let dragStartIndex = null;
+    let touchStartTime = 0;
+    let touchStartY = 0;
+    let longPressTimer = null;
+
+    function saveTasks() {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function renderTasks() {
+      const taskList = document.getElementById('taskList');
+      taskList.innerHTML = '';
+      
+      tasks.forEach((task, index) => {
+        const item = document.createElement('div');
+        item.className = 'task-item';
+        item.dataset.index = index;
+
+        const dragHandle = document.createElement('div');
+        dragHandle.innerHTML = '☰';
+        dragHandle.className = 'drag-handle';
+        dragHandle.addEventListener('touchstart', handleTouchStart);
+        dragHandle.addEventListener('touchmove', handleTouchMove);
+        dragHandle.addEventListener('touchend', handleTouchEnd);
+        dragHandle.addEventListener('mousedown', handleMouseDown);
+        
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'task-content';
+        
+        const textDiv = document.createElement('div');
+        textDiv.className = 'task-text';
+        textDiv.textContent = task.text;
+        textDiv.setAttribute('contenteditable', 'true');
+        textDiv.addEventListener('blur', () => {
+          tasks[index].text = textDiv.textContent.trim();
+          saveTasks();
+        });
+        
+        contentWrapper.appendChild(textDiv);
+        
+        if (task.datetime) {
+          const dateElem = document.createElement('div');
+          dateElem.className = 'date-display';
+          dateElem.textContent = new Date(task.datetime).toLocaleString();
+          contentWrapper.appendChild(dateElem);
+        }
+
+        const actionsWrapper = document.createElement('div');
+        actionsWrapper.className = 'task-actions';
+        
+        const calendarBtn = document.createElement('button');
+        calendarBtn.innerHTML = '📅';
+        calendarBtn.className = 'calendar-btn';
+        calendarBtn.onclick = () => openDateTimePicker(index);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '✕';
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.onclick = () => deleteTask(index);
+
+        actionsWrapper.appendChild(calendarBtn);
+        actionsWrapper.appendChild(deleteBtn);
+        
+        item.appendChild(dragHandle);
+        item.appendChild(contentWrapper);
+        item.appendChild(actionsWrapper);
+        taskList.appendChild(item);
+      });
+    }
+
+    function addTask() {
+      const input = document.getElementById('taskInput');
+      const text = input.value.trim();
+      if (text) {
+        tasks.unshift({ 
+          text,
+          datetime: null
+        });
+        input.value = '';
+        saveTasks();
+        renderTasks();
+        
+        setTimeout(() => {
+          const taskList = document.getElementById('taskList');
+          if (taskList.firstChild) {
+            taskList.firstChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 100);
+      } else {
+        input.focus();
+      }
+    }
+
+    function deleteTask(index) {
+      if (confirm('Удалить напоминание?')) {
+        tasks.splice(index, 1);
+        saveTasks();
+        renderTasks();
+      }
+    }
+    
+    function openDateTimePicker(index) {
+      currentEditIndex = index;
+
+      const modal = document.createElement('div');
+      modal.style.position = 'fixed';
+      modal.style.top = '0';
+      modal.style.left = '0';
+      modal.style.width = '100%';
+      modal.style.height = '100%';
+      modal.style.background = 'rgba(0,0,0,0.7)';
+      modal.style.display = 'flex';
+      modal.style.justifyContent = 'center';
+      modal.style.alignItems = 'center';
+      modal.style.zIndex = '1000';
+
+      const pickerBox = document.createElement('div');
+      pickerBox.style.background = 'rgba(255,255,255,0.95)';
+      pickerBox.style.padding = '25px';
+      pickerBox.style.borderRadius = '16px';
+      pickerBox.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+      pickerBox.style.width = '90%';
+      pickerBox.style.maxWidth = '400px';
+      pickerBox.innerHTML = `
+        <h3 style="margin-bottom: 15px; text-align: center;">Напоминание</h3>
+        <label style="display: block; margin-bottom: 20px;">
+          Дата и время:
+          <input type="datetime-local" id="datetimeInput" value="${tasks[index].datetime || ''}" 
+                 style="width: 100%; margin-top: 8px; padding: 12px; border-radius: 10px; border: 1px solid #ccc; font-size: 16px;">
+        </label>
+        <div style="display: flex; gap: 10px;">
+          <button id="saveBtn" style="flex: 1; padding: 14px; background: #007AFF; color: white; border: none; border-radius: 10px; font-size: 16px;">Сохранить</button>
+          <button id="cancelBtn" style="flex: 1; padding: 14px; background: #f0f0f0; border: none; border-radius: 10px; font-size: 16px;">Отмена</button>
+        </div>
+      `;
+
+      modal.appendChild(pickerBox);
+      document.body.appendChild(modal);
+      
+      setTimeout(() => {
+        const input = document.getElementById('datetimeInput');
+        input.focus();
+      }, 100);
+
+      document.getElementById('saveBtn').onclick = () => {
+        const value = document.getElementById('datetimeInput').value;
+        tasks[currentEditIndex].datetime = value;
+        document.body.removeChild(modal);
+        saveTasks();
+        renderTasks();
+      };
+
+      document.getElementById('cancelBtn').onclick = () => {
+        document.body.removeChild(modal);
+      };
+    }
+    
+    function handleTouchStart(e) {
+      touchStartTime = Date.now();
+      touchStartY = e.touches[0].clientY;
+      const taskItem = e.target.closest('.task-item');
+      
+      longPressTimer = setTimeout(() => {
+        dragStartIndex = parseInt(taskItem.dataset.index);
+        taskItem.classList.add('dragging');
+        taskItem.style.zIndex = '100';
+        e.preventDefault();
+      }, 300);
+    }
+    
+    function handleTouchMove(e) {
+      if (dragStartIndex === null) return;
+      e.preventDefault();
+      
+      const taskList = document.getElementById('taskList');
+      const taskItems = Array.from(taskList.querySelectorAll('.task-item'));
+      const draggingItem = taskItems.find(item => 
+        parseInt(item.dataset.index) === dragStartIndex
+      );
+      
+      if (!draggingItem) return;
+      
+      const touchY = e.touches[0].clientY;
+      draggingItem.style.transform = `translateY(${touchY - touchStartY}px)`;
+      
+      const taskElements = taskItems.filter(item => item !== draggingItem);
+      const targetElement = taskElements.find(item => {
+        const rect = item.getBoundingClientRect();
+        return touchY >= rect.top && touchY <= rect.bottom;
+      });
+      
+      if (targetElement) {
+        const targetIndex = parseInt(targetElement.dataset.index);
+        swapTasks(dragStartIndex, targetIndex);
+        dragStartIndex = targetIndex;
+        draggingItem.dataset.index = targetIndex;
+      }
+    }
+    
+    function handleTouchEnd() {
+      clearTimeout(longPressTimer);
+      if (dragStartIndex === null) return;
+      
+      const taskItems = document.querySelectorAll('.task-item');
+      taskItems.forEach(item => {
+        item.classList.remove('dragging');
+        item.style.transform = '';
+        item.style.zIndex = '';
+      });
+      
+      dragStartIndex = null;
+      saveTasks();
+    }
+    
+    function handleMouseDown(e) {
+      const taskItem = e.target.closest('.task-item');
+      dragStartIndex = parseInt(taskItem.dataset.index);
+      taskItem.classList.add('dragging');
+      taskItem.style.zIndex = '100';
+      
+      const startY = e.clientY;
+      const startIndex = dragStartIndex;
+      
+      function handleMouseMove(e) {
+        const mouseY = e.clientY;
+        taskItem.style.transform = `translateY(${mouseY - startY}px)`;
+        
+        const taskList = document.getElementById('taskList');
+        const taskItems = Array.from(taskList.querySelectorAll('.task-item'));
+        const otherItems = taskItems.filter(item => item !== taskItem);
+        
+        const targetElement = otherItems.find(item => {
+          const rect = item.getBoundingClientRect();
+          return mouseY >= rect.top && mouseY <= rect.bottom;
+        });
+        
+        if (targetElement) {
+          const targetIndex = parseInt(targetElement.dataset.index);
+          swapTasks(dragStartIndex, targetIndex);
+          dragStartIndex = targetIndex;
+          taskItem.dataset.index = targetIndex;
+        }
+      }
+      
+      function handleMouseUp() {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        
+        taskItem.classList.remove('dragging');
+        taskItem.style.transform = '';
+        taskItem.style.zIndex = '';
+        
+        dragStartIndex = null;
+        saveTasks();
+      }
+      
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    
+    function swapTasks(fromIndex, toIndex) {
+      if (fromIndex === toIndex) return;
+      
+      const temp = tasks[fromIndex];
+      tasks[fromIndex] = tasks[toIndex];
+      tasks[toIndex] = temp;
+      
+      const taskItems = document.querySelectorAll('.task-item');
+      taskItems[fromIndex].dataset.index = fromIndex;
+      taskItems[toIndex].dataset.index = toIndex;
+      
+      renderTasks();
+    }
+    
+    document.addEventListener('mousemove', function(e) {
+      document.querySelectorAll('.task-item').forEach(item => {
+        const rect = item.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        item.style.setProperty('--mouse-x', `${x}%`);
+        item.style.setProperty('--mouse-y', `${y}%`);
+      });
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      renderTasks();
+      
+      document.getElementById('taskInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addTask();
+      });
+      
+      if (localStorage.getItem('tasks') === null) {
+        tasks = [
+          { text: "Нажмите + чтобы добавить напоминание", datetime: null },
+          { text: "Нажмите 📅 чтобы установить дату", datetime: null },
+          { text: "Удерживайте ☰ чтобы переместить", datetime: null }
+        ];
+        saveTasks();
+        renderTasks();
+      }
+    });
+  </script>
+</body>
+</html>
