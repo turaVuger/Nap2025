@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -15,6 +14,7 @@
       overflow: hidden;
       position: relative;
       color: #1c1c1e;
+      touch-action: manipulation;
     }
     #canvas {
       position: fixed;
@@ -56,6 +56,7 @@
       flex: 1;
       overflow-y: auto;
       padding-right: 5px;
+      -webkit-overflow-scrolling: touch;
     }
     .task-item {
       display: flex;
@@ -66,7 +67,19 @@
       border-radius: 12px;
       margin-bottom: 8px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(6px);
+      transition: transform 0.2s;
+      touch-action: none;
     }
+    
+    .task-item.dragging {
+      opacity: 0.7;
+      transform: scale(1.02);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
     .task-text {
       flex: 1;
       margin-left: 10px;
@@ -76,62 +89,77 @@
       border: none;
       font-size: 20px;
       cursor: pointer;
+      z-index: 1;
     }
-  
-.task-item {
-  position: relative;
-  overflow: hidden;
-  backdrop-filter: blur(6px);
-}
 
-.task-item::before {
-  content: '';
-  position: absolute;
-  top: -10%;
-  left: -10%;
-  width: 120%;
-  height: 120%;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
-  z-index: -1;
-  transform: scale(1);
-  animation: pulseBg 4s ease-in-out infinite;
-}
+    .task-item::before {
+      content: '';
+      position: absolute;
+      top: -10%;
+      left: -10%;
+      width: 120%;
+      height: 120%;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      z-index: -1;
+      transform: scale(1);
+      animation: pulseBg 4s ease-in-out infinite;
+    }
 
-@keyframes pulseBg {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.2;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.4;
-  }
-}
+    @keyframes pulseBg {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.2;
+      }
+      50% {
+        transform: scale(1.05);
+        opacity: 0.4;
+      }
+    }
 
+    .task-item::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+      top: var(--mouse-y, 50%);
+      left: var(--mouse-x, 50%);
+      width: 100px;
+      height: 100px;
+      transform: translate(-50%, -50%) scale(5);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(4px);
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: -1;
+    }
 
-.task-item::after {
-  content: '';
-  position: absolute;
-  pointer-events: none;
-  top: var(--mouse-y, 50%);
-  left: var(--mouse-x, 50%);
-  width: 100px;
-  height: 100px;
-  transform: translate(-50%, -50%) scale(5);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(4px);
-  opacity: 0;
-  transition: opacity 0.3s;
-  z-index: -1;
-}
-
-.task-item:hover::after {
-  opacity: 1;
-}
-
-</style>
+    .task-item:hover::after {
+      opacity: 1;
+    }
+    
+    .sort-indicator {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      font-size: 12px;
+      color: #777;
+    }
+    
+    .date-display {
+      font-size: 14px;
+      color: #555;
+      margin-top: 5px;
+    }
+    
+    .drag-handle {
+      cursor: move;
+      padding: 8px;
+      margin-right: 5px;
+      font-size: 18px;
+      z-index: 1;
+    }
+  </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
@@ -141,10 +169,14 @@
       <input type="text" id="taskInput" placeholder="Новое напоминание" />
       <button onclick="addTask()">+</button>
     </div>
+    
+    <div class="sort-indicator">Сортировка: ближайшие сверху</div>
+    
     <div class="task-list-wrapper" id="taskList"></div>
   </div>
 
   <script>
+    // Инициализация canvas и анимации
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
@@ -240,123 +272,306 @@
     }
     animate();
 
-    let tasks = [];
+    // Логика приложения
+    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+    let currentEditIndex = null;
+    let dragStartIndex = null;
+    let touchStartTime = 0;
+    let touchStartY = 0;
+    let longPressTimer = null;
 
-let currentEditIndex = null;
-
-function openDateTimePicker(index) {
-  currentEditIndex = index;
-
-  const modal = document.createElement('div');
-  modal.style.position = 'fixed';
-  modal.style.top = '0';
-  modal.style.left = '0';
-  modal.style.width = '100%';
-  modal.style.height = '100%';
-  modal.style.background = 'rgba(0,0,0,0.4)';
-  modal.style.display = 'flex';
-  modal.style.justifyContent = 'center';
-  modal.style.alignItems = 'center';
-  modal.style.zIndex = '999';
-
-  const pickerBox = document.createElement('div');
-  pickerBox.style.background = '#fff';
-  pickerBox.style.padding = '20px';
-  pickerBox.style.borderRadius = '12px';
-  pickerBox.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-  pickerBox.innerHTML = `
-    <label>Дата и время:<br>
-      <input type="datetime-local" id="datetimeInput" value="${tasks[index].datetime || ''}" style="margin-top:8px; padding:10px; border-radius:10px; border:1px solid #ccc;">
-    </label>
-    <div style="margin-top: 12px; text-align: right;">
-      <button id="saveBtn" style="padding:10px 20px; margin-right:10px;">Сохранить</button>
-      <button id="cancelBtn" style="padding:10px 20px;">Отмена</button>
-    </div>
-  `;
-
-  modal.appendChild(pickerBox);
-  document.body.appendChild(modal);
-
-  document.getElementById('saveBtn').onclick = () => {
-    const value = document.getElementById('datetimeInput').value;
-    tasks[currentEditIndex].datetime = value;
-    document.body.removeChild(modal);
-    renderTasks();
-  };
-
-  document.getElementById('cancelBtn').onclick = () => {
-    document.body.removeChild(modal);
-  };
-}
-
-function renderTasks() {
-  const taskList = document.getElementById('taskList');
-  taskList.innerHTML = '';
-  tasks.forEach((task, index) => {
-    const item = document.createElement('div');
-    item.className = 'task-item';
-
-    const calendarBtn = document.createElement('button');
-    calendarBtn.innerHTML = '📅';
-    calendarBtn.className = 'delete-btn';
-    calendarBtn.style.marginRight = '8px';
-    calendarBtn.onclick = () => openDateTimePicker(index);
-
-    const textDiv = document.createElement('div');
-    textDiv.className = 'task-text';
-    textDiv.textContent = task.text;
-    textDiv.setAttribute('contenteditable', 'true');
-    textDiv.addEventListener('blur', () => {
-      tasks[index].text = textDiv.textContent.trim();
-    });
-
-    if (task.datetime) {
-      const dateElem = document.createElement('div');
-      dateElem.style.fontSize = '14px';
-      dateElem.style.color = '#555';
-      dateElem.textContent = new Date(task.datetime).toLocaleString();
-      textDiv.appendChild(dateElem);
+    // Сохранение задач в localStorage
+    function saveTasks() {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
     }
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = '✕';
-    deleteBtn.className = 'delete-btn';
-    deleteBtn.onclick = () => deleteTask(index);
+    // Сортировка задач по дате
+    function sortTasks() {
+      tasks.sort((a, b) => {
+        // Если обе задачи имеют дату
+        if (a.datetime && b.datetime) {
+          return new Date(a.datetime) - new Date(b.datetime);
+        }
+        // Если только одна задача имеет дату
+        if (a.datetime && !b.datetime) return -1;
+        if (!a.datetime && b.datetime) return 1;
+        // Если ни у одной нет даты, сохраняем текущий порядок
+        return 0;
+      });
+    }
 
-    item.appendChild(calendarBtn);
-    item.appendChild(textDiv);
-    item.appendChild(deleteBtn);
-    taskList.appendChild(item);
-  });
-}
+    function openDateTimePicker(index) {
+      currentEditIndex = index;
 
+      const modal = document.createElement('div');
+      modal.style.position = 'fixed';
+      modal.style.top = '0';
+      modal.style.left = '0';
+      modal.style.width = '100%';
+      modal.style.height = '100%';
+      modal.style.background = 'rgba(0,0,0,0.4)';
+      modal.style.display = 'flex';
+      modal.style.justifyContent = 'center';
+      modal.style.alignItems = 'center';
+      modal.style.zIndex = '999';
+
+      const pickerBox = document.createElement('div');
+      pickerBox.style.background = '#fff';
+      pickerBox.style.padding = '20px';
+      pickerBox.style.borderRadius = '12px';
+      pickerBox.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+      pickerBox.innerHTML = `
+        <label>Дата и время:<br>
+          <input type="datetime-local" id="datetimeInput" value="${tasks[index].datetime || ''}" style="margin-top:8px; padding:10px; border-radius:10px; border:1px solid #ccc;">
+        </label>
+        <div style="margin-top: 12px; text-align: right;">
+          <button id="saveBtn" style="padding:10px 20px; margin-right:10px;">Сохранить</button>
+          <button id="cancelBtn" style="padding:10px 20px;">Отмена</button>
+        </div>
+      `;
+
+      modal.appendChild(pickerBox);
+      document.body.appendChild(modal);
+
+      document.getElementById('saveBtn').onclick = () => {
+        const value = document.getElementById('datetimeInput').value;
+        tasks[currentEditIndex].datetime = value;
+        document.body.removeChild(modal);
+        sortTasks();
+        saveTasks();
+        renderTasks();
+      };
+
+      document.getElementById('cancelBtn').onclick = () => {
+        document.body.removeChild(modal);
+      };
+    }
+
+    function renderTasks() {
+      const taskList = document.getElementById('taskList');
+      taskList.innerHTML = '';
+      
+      // Сортируем задачи перед отображением
+      sortTasks();
+      
+      tasks.forEach((task, index) => {
+        const item = document.createElement('div');
+        item.className = 'task-item';
+        item.dataset.index = index;
+
+        // Добавляем иконку для перетаскивания
+        const dragHandle = document.createElement('div');
+        dragHandle.innerHTML = '☰';
+        dragHandle.className = 'drag-handle';
+        dragHandle.addEventListener('touchstart', handleTouchStart);
+        dragHandle.addEventListener('touchmove', handleTouchMove);
+        dragHandle.addEventListener('touchend', handleTouchEnd);
+        dragHandle.addEventListener('mousedown', handleMouseDown);
+        
+        const calendarBtn = document.createElement('button');
+        calendarBtn.innerHTML = '📅';
+        calendarBtn.className = 'delete-btn';
+        calendarBtn.style.marginRight = '8px';
+        calendarBtn.onclick = () => openDateTimePicker(index);
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'task-text';
+        textDiv.textContent = task.text;
+        textDiv.setAttribute('contenteditable', 'true');
+        textDiv.addEventListener('blur', () => {
+          tasks[index].text = textDiv.textContent.trim();
+          saveTasks();
+        });
+        
+        // Добавляем отображение даты
+        if (task.datetime) {
+          const dateElem = document.createElement('div');
+          dateElem.className = 'date-display';
+          dateElem.textContent = new Date(task.datetime).toLocaleString();
+          textDiv.appendChild(dateElem);
+        }
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '✕';
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.onclick = () => deleteTask(index);
+
+        item.appendChild(dragHandle);
+        item.appendChild(calendarBtn);
+        item.appendChild(textDiv);
+        item.appendChild(deleteBtn);
+        taskList.appendChild(item);
+      });
+    }
 
     function addTask() {
       const input = document.getElementById('taskInput');
       const text = input.value.trim();
       if (text) {
-        tasks.push({ text });
+        tasks.push({ 
+          text,
+          datetime: null
+        });
         input.value = '';
+        sortTasks();
+        saveTasks();
         renderTasks();
       }
     }
 
     function deleteTask(index) {
       tasks.splice(index, 1);
+      saveTasks();
       renderTasks();
     }
-
+    
+    // Функции для перетаскивания
+    function handleTouchStart(e) {
+      touchStartTime = Date.now();
+      touchStartY = e.touches[0].clientY;
+      const taskItem = e.target.closest('.task-item');
       
-document.addEventListener('mousemove', function(e) {
-  document.querySelectorAll('.task-item').forEach(item => {
-    const rect = item.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    item.style.setProperty('--mouse-x', `${x}%`);
-    item.style.setProperty('--mouse-y', `${y}%`);
-  });
-});
+      longPressTimer = setTimeout(() => {
+        dragStartIndex = parseInt(taskItem.dataset.index);
+        taskItem.classList.add('dragging');
+        taskItem.style.zIndex = '100';
+        e.preventDefault();
+      }, 500); // 500ms для long press
+    }
+    
+    function handleTouchMove(e) {
+      if (dragStartIndex === null) return;
+      e.preventDefault();
+      
+      const taskList = document.getElementById('taskList');
+      const taskItems = Array.from(taskList.querySelectorAll('.task-item'));
+      const draggingItem = taskItems.find(item => 
+        parseInt(item.dataset.index) === dragStartIndex
+      );
+      
+      if (!draggingItem) return;
+      
+      const touchY = e.touches[0].clientY;
+      draggingItem.style.transform = `translateY(${touchY - touchStartY}px)`;
+      
+      // Находим элемент, над которым находимся
+      const taskElements = taskItems.filter(item => item !== draggingItem);
+      const targetElement = taskElements.find(item => {
+        const rect = item.getBoundingClientRect();
+        return touchY >= rect.top && touchY <= rect.bottom;
+      });
+      
+      if (targetElement) {
+        const targetIndex = parseInt(targetElement.dataset.index);
+        swapTasks(dragStartIndex, targetIndex);
+        dragStartIndex = targetIndex;
+        draggingItem.dataset.index = targetIndex;
+      }
+    }
+    
+    function handleTouchEnd() {
+      clearTimeout(longPressTimer);
+      if (dragStartIndex === null) return;
+      
+      const taskItems = document.querySelectorAll('.task-item');
+      taskItems.forEach(item => {
+        item.classList.remove('dragging');
+        item.style.transform = '';
+        item.style.zIndex = '';
+      });
+      
+      dragStartIndex = null;
+      saveTasks();
+    }
+    
+    function handleMouseDown(e) {
+      const taskItem = e.target.closest('.task-item');
+      dragStartIndex = parseInt(taskItem.dataset.index);
+      taskItem.classList.add('dragging');
+      taskItem.style.zIndex = '100';
+      
+      const startY = e.clientY;
+      const startIndex = dragStartIndex;
+      
+      function handleMouseMove(e) {
+        const mouseY = e.clientY;
+        taskItem.style.transform = `translateY(${mouseY - startY}px)`;
+        
+        const taskList = document.getElementById('taskList');
+        const taskItems = Array.from(taskList.querySelectorAll('.task-item'));
+        const otherItems = taskItems.filter(item => item !== taskItem);
+        
+        // Находим элемент, над которым находимся
+        const targetElement = otherItems.find(item => {
+          const rect = item.getBoundingClientRect();
+          return mouseY >= rect.top && mouseY <= rect.bottom;
+        });
+        
+        if (targetElement) {
+          const targetIndex = parseInt(targetElement.dataset.index);
+          swapTasks(dragStartIndex, targetIndex);
+          dragStartIndex = targetIndex;
+          taskItem.dataset.index = targetIndex;
+        }
+      }
+      
+      function handleMouseUp() {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        
+        taskItem.classList.remove('dragging');
+        taskItem.style.transform = '';
+        taskItem.style.zIndex = '';
+        
+        dragStartIndex = null;
+        saveTasks();
+      }
+      
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    
+    function swapTasks(fromIndex, toIndex) {
+      if (fromIndex === toIndex) return;
+      
+      // Меняем местами задачи
+      const temp = tasks[fromIndex];
+      tasks[fromIndex] = tasks[toIndex];
+      tasks[toIndex] = temp;
+      
+      // Обновляем индексы в DOM
+      const taskItems = document.querySelectorAll('.task-item');
+      taskItems[fromIndex].dataset.index = fromIndex;
+      taskItems[toIndex].dataset.index = toIndex;
+      
+      renderTasks();
+    }
+      
+    document.addEventListener('mousemove', function(e) {
+      document.querySelectorAll('.task-item').forEach(item => {
+        const rect = item.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        item.style.setProperty('--mouse-x', `${x}%`);
+        item.style.setProperty('--mouse-y', `${y}%`);
+      });
+    });
 
-</script>
+    // Загрузка задач при старте
+    document.addEventListener('DOMContentLoaded', function() {
+      renderTasks();
+      
+      // Проверяем наличие задач в localStorage
+      if (tasks.length === 0) {
+        const sampleTasks = [
+          { text: "Пример задачи 1", datetime: null },
+          { text: "Пример задачи 2", datetime: null }
+        ];
+        tasks = sampleTasks;
+        saveTasks();
+        renderTasks();
+      }
+    });
+  </script>
 </body>
 </html>
